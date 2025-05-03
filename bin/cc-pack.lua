@@ -1,3 +1,11 @@
+--#region Constants
+local TMP_DIR = "/var/cc-pack/.tmp"
+local TMP_PACKAGE_DIR = TMP_DIR .. "/packages/"
+local PACKAGES_DIR = "/var/cc-pack/packages"
+local REMOTES_DIR = "/var/cc-pack/remotes"
+
+--#endregion
+
 --#region Util
 local Util = {}
 
@@ -15,6 +23,7 @@ Util.fetch = function(url)
 		return false, httpError
 	end
 end
+
 Util.fetchFile = function (url, path)
 	local data, error = Util.fetch(url)
 	if data then
@@ -102,7 +111,7 @@ end
 --#region Package
 local Package = {}
 
-function Package:new(package_table)
+function Package:new(package_table, local_path)
 	Util.expect(1, package_table, "table")
     
     if package_table then
@@ -128,6 +137,7 @@ function Package:new(package_table)
 		author = package_table.author or "Unknown",
 		file_map = package_table.file_map,
 		base_path = package_table.base_path,
+		local_path = local_path
 	}
 	setmetatable(obj, self)
 	self.__index = self
@@ -136,8 +146,8 @@ end
 
 function Package:install()
 	local function cleanup()
-		if fs.exists("/.tmp/" .. self.name) then
-			fs.delete("/.tmp/" .. self.name)
+		if fs.exists(TMP_DIR .. self.name) then
+			fs.delete(TMP_DIR .. self.name)
 		end
 	end
 
@@ -155,8 +165,8 @@ function Package:install()
 	end
 	
 	-- create a tmp directory
-	if not fs.exists("/.tmp/" .. self.name) then
-		fs.makeDir("/.tmp/" .. self.name)
+	if not fs.exists(TMP_DIR .. self.name) then
+		fs.makeDir(TMP_DIR .. self.name)
 	end
 
 	-- download all files
@@ -165,7 +175,7 @@ function Package:install()
 	for k, v in pairs(self.file_map) do
 		Logger.debug(k .. " > " .. v)
 		local url = self.base_path .. k
-		local path = "/.tmp/" .. self.name .. "/" .. v
+		local path = TMP_DIR .. self.name .. "/" .. v
 
 		if not fs.exists(fs.getDir(path)) or fs.isDir(fs.getDir(path)) then
 			fs.makeDir(fs.getDir(path))
@@ -183,7 +193,7 @@ function Package:install()
 	-- move files to the correct location
 	Logger.info("Installing files...")
 	for k, v in pairs(self.file_map) do
-		local source = "/.tmp/" .. self.name .. "/" .. v
+		local source = TMP_DIR .. self.name .. "/" .. v
 		local dest = v;
 
 		Logger.debug(source .. " > " .. dest)
@@ -209,11 +219,25 @@ function Package:install()
 
 	Logger.info("Cleaning up...")
 	cleanup()
+
+	-- move the package to /var/cc-pack/packages
+	-- doing so marks it as "installed"
+	if self.local_path then
+		local name = fs.getName(self.local_path)
+		local dest = PACKAGES_DIR .. "/" .. name
+		if fs.exists(dest) then
+			fs.delete(dest)
+		end
+		fs.move(self.local_path, dest)
+		fs.delete(self.local_path)
+	end
 end
 
-local function load_package(package_table) 
+local function load_package(path)
+	local package_table = dofile(path)
+
 	local status, errOrPackage = pcall(function()
-		return Package:new(package_table)
+		return Package:new(package_table, path)
 	end)
 
 	if not status then
@@ -225,6 +249,21 @@ local function load_package(package_table)
 	return errOrPackage
 end
 
+local function load_local_package(path)
+	if not fs.exists(path) then
+		Logger.error("Package file does not exist: " .. path)
+		error()
+	end
+
+	local file_name = fs.getName(path)
+	local tmp_path = TMP_PACKAGE_DIR .. file_name
+
+	if fs.exists(tmp_path) then
+		fs.delete(tmp_path)
+	end
+	fs.copy(path, tmp_path)
+	return load_package(tmp_path)
+end
 
 --#endregion
 
@@ -234,44 +273,64 @@ local function setup()
 		default = 1,
 		description = "The log level for cc-pack. 0 = DEBUG, 1 = INFO, 2 = WARN, 3 = ERROR",
 	})
-	
-	if not fs.exists("/.tmp") then
-		fs.makeDir("/.tmp")
+
+	if not fs.exists(TMP_DIR) then
+		fs.makeDir(TMP_DIR)	
 	end
 
-	if not fs.exists("/var") then
-		fs.makeDir("/var")
+	if not fs.exists(TMP_PACKAGE_DIR) then
+		fs.makeDir(TMP_PACKAGE_DIR)
 	end
 
-	if not fs.exists("/var/cc-pack") then
-		fs.makeDir("/var/cc-pack")
+	if not fs.exists(PACKAGES_DIR) then
+		fs.makeDir(PACKAGES_DIR)
 	end
 
-	if not fs.exists("/var/cc-pack/packages") then
-		fs.makeDir("/var/cc-pack/packages")
-	end
-
-	if not fs.exists("/var/cc-pack/remotes") then
-		fs.makeDir("/var/cc-pack/remotes")
+	if not fs.exists(REMOTES_DIR) then
+		fs.makeDir(REMOTES_DIR)
 	end
 end
 
 setup()
 
--- -- TODO: pass in by user
-local package_name = "example_package"
+local function usage()
+	Logger.info("Usage: cc-pack <command>")
+	Logger.info("Commands:")
+	Logger.info("  install <package> - Install a package from the local filesystem")
+end
 
-local package = load_package({
-	name = "example_package",
-	version = "1.0.0",
-	description = "An example package for testing.",
-	author = "Garfeud",
-	base_path = "https://raw.githubusercontent.com/Space-Boy-Industries/unicornpkg-repo/refs/heads/main",
-	-- key is remote path, value is local path
-	file_map = {
-		["/sbi_software/startup.lua"] = "/startup/99_sbs_startup.lua",
-	},
-})
+local function installUsage()
+	Logger.info("Usage: cc-pack install <package>")
+	Logger.info("Install a package from the local filesystem.")
+	Logger.info("  <package> - The path to the package file.")
+end
 
-package:install()
-Logger.info("Installed package: " .. package.name)
+local args = {...}
+
+if #args < 1 then
+	Logger.error("Error: Missing command.")
+	usage()
+	return
+end
+
+local command = args[1]
+
+if command == "install" then
+	if #args < 2 then
+		Logger.error("Error: Missing package path.")
+		installUsage()
+		return
+	end
+
+	local package_path = shell.resolve(args[2])
+	local package = load_local_package(package_path)
+	package:install()
+else
+	Logger.error("Error: Unknown command: " .. command)
+	usage()
+	return
+end
+
+
+
+
