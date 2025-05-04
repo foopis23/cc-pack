@@ -307,18 +307,18 @@ end
 --#region Usage
 local Usage = {
 	usage = function()
-		Logger.info("Usage: cc-pack <command>")
+		Logger.info("Usage: ccp <command>")
 		Logger.info("Commands:")
-		Logger.info("  install <package> - Install a package from the local filesystem")
-		Logger.info("  uninstall <package> - Uninstall a package")
+		Logger.info("  add <package> - Install a package from the local filesystem")
+		Logger.info("  rm <package> - Uninstall a package")
 	end,
 	install = function()
-		Logger.info("Usage: cc-pack install <package>")
+		Logger.info("Usage: ccp add <package>")
 		Logger.info("Install a package from the local filesystem.")
 		Logger.info("  <package> - The path to the package file.")
 	end,
 	uninstall = function()
-		Logger.info("Usage: cc-pack uninstall <package>")
+		Logger.info("Usage: cc-pack rm <package>")
 		Logger.info("Uninstall a package.")
 		Logger.info("  <package> - The name of the package to uninstall.")
 	end
@@ -362,7 +362,7 @@ end
 
 local command = args[1]
 
-if command == "install" then
+if command == "install" or command == 'add' then
 	if #args < 2 then
 		Logger.error("Error: Missing package path.")
 		Usage.install()
@@ -372,7 +372,7 @@ if command == "install" then
 	local package_path = shell.resolve(args[2])
 	local package = load_local_package(package_path)
 	package:install()
-elseif command == "uninstall" then
+elseif command == "uninstall" or command == 'rm' then
 	if #args < 2 then
 		Logger.error("Error: Missing package name.")
 		Usage.uninstall()
