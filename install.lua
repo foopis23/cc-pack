@@ -45,11 +45,23 @@ if answer=="y" or answer=="yes" then
 		fs.makeDir("/startup")
 	end
 
+	if fs.exists("/startup/50_unix_paths.lua") then
+		fs.delete("/startup/50_unix_paths.lua")
+	end
+
 	local startup_file = fs.open("/startup/50_unix_paths.lua", "w")
 	startup_file.write('shell.setPath("/bin:"..shell.path())\nshell.setDir("/home")\n');
 	startup_file.close()
 
+	if fs.exist("/bin/ccp.lua") then
+		fs.delete("/bin/ccp.lua")
+	end
+
 	shell.run("wget https://raw.githubusercontent.com/foopis23/cc-pack/refs/heads/main/bin/ccp.lua /bin/ccp.lua")
 else
+	if fs.exists("ccp.lua") then
+		fs.delete("ccp.lua")
+	end
+
 	shell.run("wget https://raw.githubusercontent.com/foopis23/cc-pack/refs/heads/main/bin/ccp.lua ccp.lua")
 end
