@@ -145,13 +145,13 @@ function Package:new(package_table, local_path)
 end
 
 function Package:install()
+	-- TODO: check if package is already installed
 	local function cleanup()
 		if fs.exists(TMP_DIR .. self.name) then
 			fs.delete(TMP_DIR .. self.name)
 		end
 	end
 
-	-- TODO: check if package is already installed
 	local failCleanup = function()
 		for k, v in pairs(self.file_map) do
 			local path = k;
@@ -233,6 +233,35 @@ function Package:install()
 	end
 end
 
+function Package:uninstall()
+	if not fs.exists(PACKAGES_DIR .. "/" .. self.name) then
+		return false
+	end
+
+	-- delete all the files from the file-map
+	for k, v in pairs(self.file_map) do
+		local path = v
+		if fs.exists(path) then
+			fs.delete(path)
+		end
+
+		-- if dir is empty, delete it
+		local dir = fs.getDir(path)
+		if fs.exists(dir) and fs.isDir(dir) then
+			local files = fs.list(dir)
+			if #files == 0 then
+				fs.delete(dir)
+			end
+		end
+
+		-- delete the package file
+		local package_path = PACKAGES_DIR .. "/" .. self.name
+		if fs.exists(package_path) then
+			fs.delete(package_path)
+		end
+	end
+end
+
 local function load_package(path)
 	local package_table = dofile(path)
 
@@ -265,6 +294,34 @@ local function load_local_package(path)
 	return load_package(tmp_path)
 end
 
+local function is_package_installed(name)
+	if fs.exists(PACKAGES_DIR .. "/" .. name) then
+		return true
+	end
+	return false
+end
+
+--#endregion
+
+--#region Usage
+local Usage = {
+	usage = function()
+		Logger.info("Usage: cc-pack <command>")
+		Logger.info("Commands:")
+		Logger.info("  install <package> - Install a package from the local filesystem")
+		Logger.info("  uninstall <package> - Uninstall a package")
+	end,
+	install = function()
+		Logger.info("Usage: cc-pack install <package>")
+		Logger.info("Install a package from the local filesystem.")
+		Logger.info("  <package> - The path to the package file.")
+	end,
+	uninstall = function()
+		Logger.info("Usage: cc-pack uninstall <package>")
+		Logger.info("Uninstall a package.")
+		Logger.info("  <package> - The name of the package to uninstall.")
+	end
+}
 --#endregion
 
 local function setup()
@@ -293,23 +350,12 @@ end
 
 setup()
 
-local function usage()
-	Logger.info("Usage: cc-pack <command>")
-	Logger.info("Commands:")
-	Logger.info("  install <package> - Install a package from the local filesystem")
-end
-
-local function installUsage()
-	Logger.info("Usage: cc-pack install <package>")
-	Logger.info("Install a package from the local filesystem.")
-	Logger.info("  <package> - The path to the package file.")
-end
 
 local args = {...}
 
 if #args < 1 then
 	Logger.error("Error: Missing command.")
-	usage()
+	Usage.usage()
 	return
 end
 
@@ -318,19 +364,32 @@ local command = args[1]
 if command == "install" then
 	if #args < 2 then
 		Logger.error("Error: Missing package path.")
-		installUsage()
+		Usage.install()
 		return
 	end
 
 	local package_path = shell.resolve(args[2])
 	local package = load_local_package(package_path)
 	package:install()
+elseif command == "uninstall" then
+	if #args < 2 then
+		Logger.error("Error: Missing package name.")
+		Usage.uninstall()
+		return
+	end
+
+	if not is_package_installed(args[2]) then
+		Logger.error("Error: Package not installed: " .. args[2])
+		return
+	end
+
+	local package_name = args[2]
+	local package = load_local_package(PACKAGES_DIR .. "/" .. package_name)
+
+	package:uninstall()
+	Logger.info("Uninstalled package: " .. package_name)
 else
 	Logger.error("Error: Unknown command: " .. command)
-	usage()
+	Usage.usage()
 	return
 end
-
-
-
-
