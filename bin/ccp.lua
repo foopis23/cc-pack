@@ -12,7 +12,7 @@ local Util = {}
 Util.expect = require("cc.expect").expect
 Util.field = require("cc.expect").field
 Util.range = require("cc.expect").range
-Util.fetch = function(url)
+function Util.fetch(url)
 	local response, httpError = http.get(url)
 
 	if response then
@@ -24,7 +24,7 @@ Util.fetch = function(url)
 	end
 end
 
-Util.fetchFile = function (url, path)
+function Util.fetchFile(url, path)
 	local data, error = Util.fetch(url)
 	if data then
 		local file = fs.open(path, "w")
@@ -38,6 +38,15 @@ Util.fetchFile = function (url, path)
 	else
 		return false, error
 	end
+end
+
+function Util.handleOptionalLuaPaths(path)
+	-- if path has .lua, remove it
+	if string.sub(path, -4) == ".lua" then
+		path = string.sub(path, 1, -5)
+	end
+
+	return path .. "?.lua"
 end
 
 --#endregion
@@ -252,13 +261,14 @@ function Package:uninstall()
 	end
 
 	-- delete the package file
-	print("Deleting package file: " .. self.local_path)
 	if fs.exists(self.local_path) then
 		fs.delete(self.local_path)
 	end
 end
 
 local function load_package(path)
+	path = Util.handleOptionalLuaPaths(path)
+
 	if not fs.exists(path) then
 		Logger.error("Package file does not exist: " .. path)
 		error()
@@ -280,6 +290,7 @@ local function load_package(path)
 end
 
 local function load_local_package(path)
+	path = Util.handleOptionalLuaPaths(path)
 	if not fs.exists(path) then
 		Logger.error("Package file does not exist: " .. path)
 		error()
@@ -296,7 +307,8 @@ local function load_local_package(path)
 end
 
 local function is_package_installed(name)
-	if fs.exists(PACKAGES_DIR .. "/" .. name) then
+	local path = Util.handleOptionalLuaPaths(PACKAGES_DIR .. "/" .. name)
+	if fs.exists(path) then
 		return true
 	end
 	return false
