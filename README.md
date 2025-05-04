@@ -79,6 +79,7 @@ List all configured remote repositories.
 ccp remote list
 ```
 
+## Creating a Package
 ### Package Format
 
 Packages are Lua files that return a table with the following structure:
@@ -91,8 +92,8 @@ Packages are Lua files that return a table with the following structure:
     author = "Author Name",       -- optional: string (defaults to "Unknown")
     base_path = "https://...",    -- required: string - base URL for file downloads
     file_map = {                  -- required: table mapping remote files to local paths
-        ["remote/path/file1.lua"] = "/local/path/file1.lua",
-        ["remote/path/file2.lua"] = "/local/path/file2.lua"
+        ["/remote/path/file1.lua"] = "/local/path/file1.lua",
+        ["/remote/path/file2.lua"] = "/local/path/file2.lua"
     }
 }
 ```
@@ -114,23 +115,26 @@ return {
 }
 ```
 
-This example shows how to use a GitHub raw content URL as the base path, which is a common way to distribute ComputerCraft packages.
-
-### Directory Structure
+## Creating a Remote Repository
+A remote repository is just a web server that hosts packages at a specific URL. The package manager will look for packages in the following format:
 
 ```
-/var/cc-pack/
-  ├── packages/     -- Installed packages metadata
-  ├── remotes/      -- Remote package definitions
-  └── .tmp/         -- Temporary files during installation
-      └── packages/ -- Temporary package processing
+https://<repository_url>/<package_name>.lua
 ```
 
-### Configuration
+### Github as a Remote Repository
+You can use GitHub to host your packages. Just create a new repository and add your package files. The package manager will be able to access them using the raw URL.
+
+Base url format:
+```
+https://raw.githubusercontent.com/<account_or_org>/<repo_name>/refs/heads/<branch_name>
+```
+
+## Configuration
 
 The package manager uses ComputerCraft's settings API for configuration. Available settings:
 
-#### Logging
+### Logging
 
 Configure the logging level using the `cc-pack.log_level` setting:
 
@@ -145,18 +149,3 @@ Log levels:
 - 1 = INFO (default, normal output)
 - 2 = WARN (warnings only)
 - 3 = ERROR (errors only)
-
-### Installation Process
-
-When installing a package:
-
-1. Package file is validated
-2. Files are downloaded to a temporary directory
-3. Files are moved to their specified locations
-4. Package metadata is stored in `/var/cc-pack/packages/`
-
-When uninstalling a package:
-
-1. All files specified in the package's file_map are removed
-2. Empty directories are cleaned up
-3. Package metadata is removed from `/var/cc-pack/packages/`
