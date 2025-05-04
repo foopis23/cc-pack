@@ -8,13 +8,7 @@ Very simple package manager for computer craft.
 
 ## Usage
 
-```
-ccp <command>
-```
-
-### Commands
-
-#### add (or install)
+### add (or install) package
 
 Install a package. Packages can be installed from three different sources:
 
@@ -37,7 +31,7 @@ Install a package. Packages can be installed from three different sources:
     ```
 
 
-#### rm (or uninstall)
+### rm (or uninstall) package
 
 Remove an installed package.
 
@@ -45,7 +39,7 @@ Remove an installed package.
 ccp rm <package_name>
 ```
 
-#### remote
+### remote
 
 Manage remote package repositories.
 
@@ -55,7 +49,7 @@ ccp remote <command>
 
 Available remote commands:
 
-##### add
+#### add
 
 Add a remote package repository.
 
@@ -63,7 +57,7 @@ Add a remote package repository.
 ccp remote add <url>
 ```
 
-##### rm
+#### rm
 
 Remove a remote package repository.
 
@@ -71,7 +65,7 @@ Remove a remote package repository.
 ccp remote rm <url>
 ```
 
-##### list
+#### list
 
 List all configured remote repositories.
 
