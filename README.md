@@ -1,6 +1,5 @@
 # cc-pack
-
-A package manager for ComputerCraft that helps you install and manage packages for your ComputerCraft computer.
+Very simple package manager for computer craft.
 
 ## Installation
 
