@@ -234,10 +234,6 @@ function Package:install()
 end
 
 function Package:uninstall()
-	if not fs.exists(PACKAGES_DIR .. "/" .. self.name) then
-		return false
-	end
-
 	-- delete all the files from the file-map
 	for k, v in pairs(self.file_map) do
 		local path = v
@@ -253,16 +249,21 @@ function Package:uninstall()
 				fs.delete(dir)
 			end
 		end
+	end
 
-		-- delete the package file
-		local package_path = PACKAGES_DIR .. "/" .. self.name
-		if fs.exists(package_path) then
-			fs.delete(package_path)
-		end
+	-- delete the package file
+	print("Deleting package file: " .. self.local_path)
+	if fs.exists(self.local_path) then
+		fs.delete(self.local_path)
 	end
 end
 
 local function load_package(path)
+	if not fs.exists(path) then
+		Logger.error("Package file does not exist: " .. path)
+		error()
+	end
+
 	local package_table = dofile(path)
 
 	local status, errOrPackage = pcall(function()
@@ -384,7 +385,7 @@ elseif command == "uninstall" then
 	end
 
 	local package_name = args[2]
-	local package = load_local_package(PACKAGES_DIR .. "/" .. package_name)
+	local package = load_package(PACKAGES_DIR .. "/" .. package_name)
 
 	package:uninstall()
 	Logger.info("Uninstalled package: " .. package_name)
