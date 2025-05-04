@@ -16,24 +16,24 @@ ccp <command>
 
 #### add (or install)
 
-Install a package. Packages can be installed from three different sources:
+    Install a package. Packages can be installed from three different sources:
 
-1. Remote repository:
-```
-ccp add package_name
-```
+    1. Remote repository:
+    ```
+    ccp add package_name
+    ```
 
-*When installing by package name, cc-pack will search through configured remote repositories to find the package.*
+    *When installing by package name, cc-pack will search through configured remote repositories to find the package.*
 
 2. URL:
-```
-ccp add https://example.com/package.lua
-```
+    ```
+    ccp add https://example.com/package.lua
+    ```
 
 3. Local file:
-```
-ccp add file://path/to/package.lua
-```
+    ```
+    ccp add file://path/to/package.lua
+    ```
 
 
 #### rm (or uninstall)
