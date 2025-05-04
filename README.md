@@ -1,10 +1,10 @@
 # cc-pack
 Very simple package manager for computer craft.
 
-## Installation
-
-1. Copy the contents of this repository to your ComputerCraft computer
-2. The package manager will automatically set up required directories on first run
+## Installation 
+```
+wget run https://raw.githubusercontent.com/foopis23/cc-pack/refs/heads/main/install.lua
+```
 
 ## Usage
 
