@@ -16,9 +16,10 @@ ccp <command>
 
 #### add (or install)
 
-    Install a package. Packages can be installed from three different sources:
+Install a package. Packages can be installed from three different sources:
 
-    1. Remote repository:
+1. Remote repository:
+
     ```
     ccp add package_name
     ```
