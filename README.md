@@ -31,6 +31,40 @@ Remove an installed package.
 ccp rm <package_name>
 ```
 
+#### remote
+
+Manage remote package repositories.
+
+```
+ccp remote <command>
+```
+
+Available remote commands:
+
+##### add
+
+Add a remote package repository.
+
+```
+ccp remote add <url>
+```
+
+##### rm
+
+Remove a remote package repository.
+
+```
+ccp remote rm <url>
+```
+
+##### list
+
+List all configured remote repositories.
+
+```
+ccp remote list
+```
+
 ### Package Format
 
 Packages are Lua files that return a table with the following structure:
