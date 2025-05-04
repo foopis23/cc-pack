@@ -2,7 +2,7 @@
 local TMP_DIR = "/var/cc-pack/.tmp"
 local TMP_PACKAGE_DIR = TMP_DIR .. "/packages/"
 local PACKAGES_DIR = "/var/cc-pack/packages"
-local REMOTES_FILE = "/var/cc-pack/remotes.lua"
+local REMOTES_FILE = "/var/cc-pack/remotes.dat"
 
 --#endregion
 
@@ -117,6 +117,69 @@ Logger.error = function(message)
 end
 --#endregion
 
+--#region Remote
+local function init_remotes()
+	if not fs.exists(REMOTES_FILE) then
+		local file = fs.open(REMOTES_FILE, "w")
+		file.write(textutils.serialize({}))
+		file.close()
+	end
+end
+
+local function load_remotes()
+	local remotes = {}
+	local file = fs.open(REMOTES_FILE, "r")
+	local data = file.readAll()
+	file.close()
+	remotes = textutils.unserialize(data)
+	return remotes
+end
+
+local function save_remotes(remotes)
+	local file = fs.open(REMOTES_FILE, "w")
+	file.write(textutils.serialize(remotes))
+	file.close()
+end
+
+local function add_remote(base_url)
+	Util.expect(1, base_url, "string")
+	local status, error = http.checkURL(base_url)
+	if not status then
+		Logger.error("Invalid URL: " .. base_url)
+		error()
+	end
+
+	local remotes = load_remotes()
+	-- if remotes array contains the base_url, return
+	for _, remote in ipairs(remotes) do
+		if remote == base_url then
+			return false
+		end
+	end
+
+	-- add the base_url to the remotes array
+	table.insert(remotes, base_url)
+	save_remotes(remotes)
+
+	return true
+end
+
+local function remove_remote(base_url)
+	Util.expect(1, url, "string")
+	local remotes = load_remotes()
+	-- if remotes array contains the base_url, return
+	for i, remote in ipairs(remotes) do
+		if remote == base_url then
+			table.remove(remotes, i)
+			save_remotes(remotes)
+			return true
+		end
+	end
+
+	return false
+end
+--#endregion
+
 --#region Package
 local Package = {}
 
@@ -148,6 +211,23 @@ function Package:new(package_table, local_path)
 		base_path = package_table.base_path,
 		local_path = local_path
 	}
+
+	-- if base_path ends with /, remove it
+	if string.sub(obj.base_path, -1) == "/" then
+		obj.base_path = string.sub(obj.base_path, 1, -2)
+	end
+
+	-- if key in file_map doesn't start with /, add it.
+	local new_file_map = {}
+	for k, v in pairs(obj.file_map) do
+		if string.sub(k, 1, 1) ~= "/" then
+			k = "/" .. k
+		end
+		new_file_map[k] = v
+	end
+
+	obj.file_map = new_file_map
+
 	setmetatable(obj, self)
 	self.__index = self
 	return obj
@@ -314,72 +394,9 @@ local function is_package_installed(name)
 	return false
 end
 
---#endregion
-
---#region Remote
-local function init_remotes()
-	if not fs.exists(REMOTES_FILE) then
-		local file = fs.open(REMOTES_FILE, "w")
-		file.write(textutils.serialize({}))
-		file.close()
-	end
-end
-
-local function load_remotes()
-	local remotes = {}
-	local file = fs.open(REMOTES_FILE, "r")
-	local data = file.readAll()
-	file.close()
-	remotes = textutils.unserialize(data)
-	return remotes
-end
-
-local function save_remotes(remotes)
-	local file = fs.open(REMOTES_FILE, "w")
-	file.write(textutils.serialize(remotes))
-	file.close()
-end
-
-local function add_remote(base_url)
-	Util.expect(1, base_url, "string")
-	local status, error = http.checkURL(base_url)
-	if not status then
-		Logger.error("Invalid URL: " .. base_url)
-		error()
-	end
-
+local function load_package_from_remote(name)
 	local remotes = load_remotes()
-	-- if remotes array contains the base_url, return
-	for _, remote in ipairs(remotes) do
-		if remote == base_url then
-			return false
-		end
-	end
-
-	-- add the base_url to the remotes array
-	table.insert(remotes, base_url)
-	save_remotes(remotes)
-
-	return true
-end
-
-local function remove_remote(base_url)
-	Util.expect(1, url, "string")
-	local remotes = load_remotes()
-	-- if remotes array contains the base_url, return
-	for i, remote in ipairs(remotes) do
-		if remote == base_url then
-			table.remove(remotes, i)
-			save_remotes(remotes)
-			return true
-		end
-	end
-
-	return false
-end
-
-local function get_package_def(name)
-	local remotes = load_remotes()
+	-- loop through remotes until we find a version of the package
 	for _, remote in ipairs(remotes) do
 		local url = remote .. "/" .. name
 		local status, error = http.checkURL(url)
@@ -388,15 +405,49 @@ local function get_package_def(name)
 			error()
 		end
 
-		local data, err = Util.fetch(url)
+		local tmp_path = TMP_DIR .. '/' .. name .. '.lua'
+		local downloaded = Util.fetchFile(url .. '.lua', tmp_path)
 
-		if data then
-			return data
+		-- try to load package without the .lua extension
+		if not downloaded then
+			downloaded = Util.fetchFile(url, tmp_path)
 		end
+
+		if downloaded then
+			local package = load_package(tmp_path)
+			return package
+		end
+
+		-- if package is not found, keep looking
 	end
 
 	return false, "Package not found: " .. name
 end
+
+local function load_package_from_url(url)
+	local status, error = http.checkURL(url)
+	if not status then
+		Logger.error("Invalid URL: " .. url)
+		error()
+	end
+
+	local data, err = Util.fetch(url)
+
+	if data then
+		local file = fs.open(TMP_DIR .. fs.getName(url), "w")
+		if file then
+			file.write(data)
+			file.close()
+		else
+			return false, "Failed to open file for writing: " .. TMP_DIR .. fs.getName(url)
+		end
+		local package = load_package(TMP_DIR .. fs.getName(url))
+		return package
+	end
+
+	return false, "Package not found: " .. url
+end
+
 --#endregion
 
 --#region Usage
@@ -404,13 +455,15 @@ local Usage = {
 	usage = function()
 		Logger.info("Usage: ccp <command>")
 		Logger.info("Commands:")
-		Logger.info("  add <package> - Install a package from the local filesystem")
+		Logger.info("  add <package> - Install a package")
 		Logger.info("  rm <package> - Uninstall a package")
 	end,
 	install = function()
 		Logger.info("Usage: ccp add <package>")
-		Logger.info("Install a package from the local filesystem.")
-		Logger.info("  <package> - The path to the package file.")
+		Logger.info("Install a package from a remote, url, or local file.")
+		Logger.info("  <package> - The name, url, or path to the package.")
+		Logger.info("    - If a url, it should be in the format http://example.com/package.lua")
+		Logger.info("    - If a local file, it should be in the format file://path/to/package.lua")
 	end,
 	uninstall = function()
 		Logger.info("Usage: ccp rm <package>")
@@ -484,8 +537,31 @@ if command == "install" or command == 'add' then
 		return
 	end
 
-	local package_path = shell.resolve(args[2])
-	local package = load_local_package(package_path)
+	-- three types of packages resolvers:
+	-- 1. local package file://path/to/package.lua
+	-- 2. url package http(s)://example.com/package.lua
+	-- 3. package name (resolve from remotes)
+
+	local package_path = args[2]
+	local package = nil
+	if string.sub(package_path, 1, 7) == "file://" then
+		-- local package
+		package_path = string.sub(package_path, 7)
+		package = load_local_package(package_path)
+	elseif string.sub(package_path, 1, 7) == "http://" or string.sub(package_path, 1, 8) == "https://" then
+		-- url package
+		package = load_package_from_url(package_path)
+	else
+		-- package name
+		package = load_package_from_remote(package_path)
+	end
+
+	if not package then
+		Logger.error("Error: Failed to load package: " .. package_path)
+		return
+	end
+
+	-- local package = load_local_package(package_path)
 	package:install()
 elseif command == "uninstall" or command == 'rm' then
 	if #args < 2 then
@@ -526,7 +602,7 @@ elseif command == "remote" then
 		if status then
 			Logger.info("Added remote: " .. url)
 		else
-			Logger.info("Remote already exists: " .. url)
+			Logger.warn("Remote already exists: " .. url)
 		end
 	elseif subcommand == "rm" then
 		if #args < 3 then
