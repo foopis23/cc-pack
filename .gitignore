@@ -108,4 +108,4 @@ var/
 .settings/
 .mbs/
 bin/mbs.lua
-.shell_history/
+.shell_history
