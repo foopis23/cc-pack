@@ -459,6 +459,7 @@ local Usage = {
 		Logger.info("Commands:")
 		Logger.info("  add <package> - Install a package")
 		Logger.info("  rm <package> - Uninstall a package")
+		Logger.info("  remote <command> - Manage remote repositories")
 	end,
 	install = function()
 		Logger.info("Usage: ccp add <package>")
