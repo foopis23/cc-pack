@@ -330,7 +330,7 @@ local Usage = {
 		Logger.info("  <package> - The path to the package file.")
 	end,
 	uninstall = function()
-		Logger.info("Usage: cc-pack rm <package>")
+		Logger.info("Usage: ccp rm <package>")
 		Logger.info("Uninstall a package.")
 		Logger.info("  <package> - The name of the package to uninstall.")
 	end
