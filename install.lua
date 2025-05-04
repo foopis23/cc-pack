@@ -53,7 +53,7 @@ if answer=="y" or answer=="yes" then
 	startup_file.write('shell.setPath("/bin:"..shell.path())\nshell.setDir("/home")\n');
 	startup_file.close()
 
-	if fs.exist("/bin/ccp.lua") then
+	if fs.exists("/bin/ccp.lua") then
 		fs.delete("/bin/ccp.lua")
 	end
 
