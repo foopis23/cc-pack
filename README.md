@@ -137,10 +137,8 @@ The package manager uses ComputerCraft's settings API for configuration. Availab
 
 Configure the logging level using the `cc-pack.log_level` setting:
 
-```lua
--- Set via ComputerCraft settings
-settings.set("cc-pack.log_level", level)
-settings.save()
+```
+set cc-pack.log_level <level>
 ```
 
 Log levels:
