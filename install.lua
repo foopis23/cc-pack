@@ -4,9 +4,9 @@ function trim(s)
 
 
 print("Most packages depend on unix-like paths, would you like to install unix-like paths? (Y/n)")
-term.setTextColor(colors.lightGray)
-print("This will create a startup file to add /bin to path and start you in your /home directory.")
-term.setTextColor(colors.white)
+-- term.setTextColor(colors.lightGray)
+-- print("This will create a startup file to add /bin to path and start you in your /home directory.")
+-- term.setTextColor(colors.white)
 
 local answer = read()
 answer = trim(answer)
@@ -65,3 +65,7 @@ else
 
 	shell.run("wget https://raw.githubusercontent.com/foopis23/cc-pack/refs/heads/main/bin/ccp.lua ccp.lua")
 end
+
+textutils.slowPrint("Rebooting in 3 seconds...")
+sleep(3)
+os.reboot()
