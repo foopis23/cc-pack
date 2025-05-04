@@ -2,7 +2,7 @@
 local TMP_DIR = "/var/cc-pack/.tmp"
 local TMP_PACKAGE_DIR = TMP_DIR .. "/packages/"
 local PACKAGES_DIR = "/var/cc-pack/packages"
-local REMOTES_DIR = "/var/cc-pack/remotes"
+local REMOTES_FILE = "/var/cc-pack/remotes.lua"
 
 --#endregion
 
@@ -316,6 +316,89 @@ end
 
 --#endregion
 
+--#region Remote
+local function init_remotes()
+	if not fs.exists(REMOTES_FILE) then
+		local file = fs.open(REMOTES_FILE, "w")
+		file.write(textutils.serialize({}))
+		file.close()
+	end
+end
+
+local function load_remotes()
+	local remotes = {}
+	local file = fs.open(REMOTES_FILE, "r")
+	local data = file.readAll()
+	file.close()
+	remotes = textutils.unserialize(data)
+	return remotes
+end
+
+local function save_remotes(remotes)
+	local file = fs.open(REMOTES_FILE, "w")
+	file.write(textutils.serialize(remotes))
+	file.close()
+end
+
+local function add_remote(base_url)
+	Util.expect(1, base_url, "string")
+	local status, error = http.checkURL(base_url)
+	if not status then
+		Logger.error("Invalid URL: " .. base_url)
+		error()
+	end
+
+	local remotes = load_remotes()
+	-- if remotes array contains the base_url, return
+	for _, remote in ipairs(remotes) do
+		if remote == base_url then
+			return false
+		end
+	end
+
+	-- add the base_url to the remotes array
+	table.insert(remotes, base_url)
+	save_remotes(remotes)
+
+	return true
+end
+
+local function remove_remote(base_url)
+	Util.expect(1, url, "string")
+	local remotes = load_remotes()
+	-- if remotes array contains the base_url, return
+	for i, remote in ipairs(remotes) do
+		if remote == base_url then
+			table.remove(remotes, i)
+			save_remotes(remotes)
+			return true
+		end
+	end
+
+	return false
+end
+
+local function get_package_def(name)
+	local remotes = load_remotes()
+	for _, remote in ipairs(remotes) do
+		local url = remote .. "/" .. name
+		local status, error = http.checkURL(url)
+		if not status then
+			Logger.error("Invalid URL: " .. url)
+			error()
+		end
+
+		local data, err = Util.fetch(url)
+
+		if data then
+			return data
+		end
+	end
+
+	return false, "Package not found: " .. name
+end
+--#endregion
+
 --#region Usage
 local Usage = {
 	usage = function()
@@ -333,7 +416,29 @@ local Usage = {
 		Logger.info("Usage: ccp rm <package>")
 		Logger.info("Uninstall a package.")
 		Logger.info("  <package> - The name of the package to uninstall.")
-	end
+	end,
+	remote = {
+		usage = function()
+			Logger.info("Usage: ccp remote <command>")
+			Logger.info("Commands:")
+			Logger.info("  add <url> - Add a remote repository")
+			Logger.info("  rm <url> - Remove a remote repository")
+		end,
+		add = function()
+			Logger.info("Usage: ccp remote add <url>")
+			Logger.info("Add a remote repository.")
+			Logger.info("  <url> - The URL of the remote repository.")
+		end,
+		rm = function()
+			Logger.info("Usage: ccp remote rm <url>")
+			Logger.info("Remove a remote repository.")
+			Logger.info("  <url> - The URL of the remote repository.")
+		end,
+		list = function()
+			Logger.info("Usage: ccp remote list")
+			Logger.info("List all remote repositories.")
+		end,
+	}
 }
 --#endregion
 
@@ -356,9 +461,7 @@ local function setup()
 		fs.makeDir(PACKAGES_DIR)
 	end
 
-	if not fs.exists(REMOTES_DIR) then
-		fs.makeDir(REMOTES_DIR)
-	end
+	init_remotes()
 end
 
 setup()
@@ -401,6 +504,59 @@ elseif command == "uninstall" or command == 'rm' then
 
 	package:uninstall()
 	Logger.info("Uninstalled package: " .. package_name)
+
+elseif command == "remote" then
+	local subcommand = args[2]
+	if not subcommand then
+		Logger.error("Error: Missing subcommand.")
+		Usage.remote.usage()
+		return
+	end
+
+	if subcommand == "add" then
+		if #args < 3 then
+			Logger.error("Error: Missing remote URL.")
+			Usage.remote.add()
+			return
+		end
+
+		local url = args[3]
+		print(url)
+		local status = add_remote(url)
+		if status then
+			Logger.info("Added remote: " .. url)
+		else
+			Logger.info("Remote already exists: " .. url)
+		end
+	elseif subcommand == "rm" then
+		if #args < 3 then
+			Logger.error("Error: Missing remote URL.")
+			Usage.remote.rm()
+			return
+		end
+
+		local url = args[3]
+		local status = remove_remote(url)
+		if status then
+			Logger.info("Removed remote: " .. url)
+		else
+			Logger.info("Remote not found: " .. url)
+		end
+	elseif subcommand == "list" then
+		local remotes = load_remotes()
+		if #remotes == 0 then
+			Logger.info("No remotes found.")
+		else
+			Logger.info("Remotes:")
+			for _, remote in ipairs(remotes) do
+				Logger.info("  " .. remote)
+			end
+		end
+	else
+		Logger.error("Error: Unknown subcommand: " .. subcommand)
+		Usage.remote.usage()
+		return
+	end
 else
 	Logger.error("Error: Unknown command: " .. command)
 	Usage.usage()
