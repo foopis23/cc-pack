@@ -121,7 +121,9 @@ end
 local function init_remotes()
 	if not fs.exists(REMOTES_FILE) then
 		local file = fs.open(REMOTES_FILE, "w")
-		file.write(textutils.serialize({}))
+		file.write(textutils.serialize({
+			"https://raw.githubusercontent.com/foopis23/cc-pack-remote/refs/heads/main"
+		}))
 		file.close()
 	end
 end
