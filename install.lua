@@ -46,7 +46,7 @@ if answer=="y" or answer=="yes" then
 	end
 
 	local startup_file = fs.open("/startup/50_unix_paths.lua", "w")
-	startup_file.write('shell.setPath("/bin"..shell.path())\nshell.setDir("/home")\n');
+	startup_file.write('shell.setPath("/bin:"..shell.path())\nshell.setDir("/home")\n');
 	startup_file.close()
 
 	shell.run("wget https://raw.githubusercontent.com/foopis23/cc-pack/refs/heads/main/bin/ccp.lua /bin/ccp.lua")
