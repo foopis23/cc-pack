@@ -1,6 +1,16 @@
 # cc-pack
 Very simple package manager for computer craft.
 
+## Features
+- Install packages from remote repositories, URLs, or local files.
+- Uninstall packages.
+- Manage remote repositories.
+
+## Advantages
+- Descriptive error messages.
+- Simple package format.
+- Easy to create and host packages.
+
 ## Installation 
 ```
 wget run https://raw.githubusercontent.com/foopis23/cc-pack/refs/heads/main/install.lua
