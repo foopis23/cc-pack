@@ -107,6 +107,7 @@ Packages are Lua files that return a table with the following structure:
 Here's an example package definition that installs from a GitHub repository:
 
 ```lua
+-- example_package.lua
 return {
     name = "example_package",
     version = "1.0.0",
@@ -118,6 +119,8 @@ return {
     },
 }
 ```
+
+*As of right now, packages are resolved by file name, not by the name field in the package table. This means that if you have a package file named `example_package.lua`, it will be installed as `example_package` regardless of the name field in the package table.*
 
 ## Creating a Remote Repository
 A remote repository is just a web server that hosts packages at a specific URL. The package manager will look for packages in the following format:
