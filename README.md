@@ -1,5 +1,5 @@
 # cc-pack
-Very simple package manager for computer craft.
+Very simple package manager for ComputerCraft.
 
 ## Features
 - Install packages from remote repositories, URLs, or local files.
